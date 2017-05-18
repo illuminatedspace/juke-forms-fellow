@@ -23,6 +23,7 @@ export default class AppContainer extends Component {
     this.prev = this.prev.bind(this);
     this.selectAlbum = this.selectAlbum.bind(this);
     this.selectArtist = this.selectArtist.bind(this);
+    this.selectPlaylist = this.selectPlaylist.bind(this);
   }
 
   componentDidMount () {
@@ -30,7 +31,8 @@ export default class AppContainer extends Component {
     Promise
       .all([
         axios.get('/api/albums/'),
-        axios.get('/api/artists/')
+        axios.get('/api/artists/'),
+        axios.get('/api/playlists/')
       ])
       .then(res => res.map(r => r.data))
       .then(data => this.onLoad(...data));
@@ -41,10 +43,11 @@ export default class AppContainer extends Component {
       this.setProgress(AUDIO.currentTime / AUDIO.duration));
   }
 
-  onLoad (albums, artists) {
+  onLoad (albums, artists, playlists) {
     this.setState({
       albums: convertAlbums(albums),
-      artists: artists
+      artists: artists,
+      playlists: playlists
     });
   }
 
@@ -124,19 +127,42 @@ export default class AppContainer extends Component {
     this.setState({ selectedArtist: artist });
   }
 
+  addPlaylist (playlistName) {
+    axios.post('/api/playlists', { name: playlistName })
+    .then(res => {
+      const playlist = res.data
+      console.log('axios response', playlist)
+      this.setState({
+        playlists: [...this.state.playlists, playlist]
+      })
+    })
+  }
+
+  selectPlaylist (playlistId) {
+    axios.get(`/api/playlists/${playlistId}`)
+    .then(res => {
+      const playlist = res.data;
+      playlist.songs = playlist.songs.map(convertSong);
+      this.setState({
+        selectedPlaylist: playlist
+      });
+    });
+  }
+
   render () {
 
     const props = Object.assign({}, this.state, {
       toggleOne: this.toggleOne,
       toggle: this.toggle,
       selectAlbum: this.selectAlbum,
-      selectArtist: this.selectArtist
+      selectArtist: this.selectArtist,
+      selectPlaylist: this.selectPlaylist
     });
 
     return (
       <div id="main" className="container-fluid">
         <div className="col-xs-2">
-          <Sidebar />
+          <Sidebar playlists={this.state.playlists} />
         </div>
         <div className="col-xs-10">
         {
